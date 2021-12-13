@@ -38,9 +38,7 @@ def some_film(request):
         }
     ]
 
-    es = Elasticsearch(ELASTIC_HOST)
-    # FIXME: Индекс может уже существовать из-за хвостов прошлых ошибок
-    #        В рабочем варианте этого быть не должно, убрать потом
+    es = Elasticsearch(f"http://{ELASTIC_HOST}")
     try:
         es.indices.delete('movies')
     except:
@@ -76,9 +74,7 @@ def empty_index(request):
     with open("testdata/schemes.json") as fd:
         schemes = json.load(fd)
     scheme = schemes['film_scheme']
-    es = Elasticsearch(ELASTIC_HOST)
-    # FIXME: Индекс может уже существовать из-за хвостов прошлых ошибок
-    #        В рабочем варианте этого быть не должно, убрать потом
+    es = Elasticsearch(f"http://{ELASTIC_HOST}")
     try:
         es.indices.delete('movies')
     except:
@@ -96,7 +92,7 @@ def empty_index(request):
 async def test_some_film(some_film):
     """Проверяем, что тестовый фильм доступен по API"""
     async with aiohttp.ClientSession() as session:
-        async with session.get(f"{API_HOST}/api/v1/film/bb74a838-584e-11ec-9885-c13c488d29c0") as ans:
+        async with session.get(f"http://{API_HOST}/api/v1/film/bb74a838-584e-11ec-9885-c13c488d29c0") as ans:
             assert ans.status == 200
             data = await ans.json()
             assert data["uuid"] == "bb74a838-584e-11ec-9885-c13c488d29c0"
@@ -108,7 +104,14 @@ async def test_some_film(some_film):
 async def test_film_list(some_film):
     """Проверяем, что тестовый фильм отображается в списке всех фильмов"""
     async with aiohttp.ClientSession() as session:
-        async with session.get(f"{API_HOST}/api/v1/film") as ans:
+        async with session.get(f"http://{API_HOST}/api/v1/film/bb74a838-584e-11ec-9885-c13c488d29c0") as ans:
+            assert ans.status == 200
+            data = await ans.json()
+            assert data["uuid"] == "bb74a838-584e-11ec-9885-c13c488d29c0"
+            assert data["title"] == "Some film"
+            assert data["imdb_rating"] == 5.5
+    async with aiohttp.ClientSession() as session:
+        async with session.get(f"http://{API_HOST}/api/v1/film") as ans:
             assert ans.status == 200
             data = await ans.json()
             assert isinstance(data, list)
@@ -122,7 +125,7 @@ async def test_film_list(some_film):
 async def test_empty(empty_index):
     """Тест запускается без фикстур и API должен вернуть ошибку 404"""
     async with aiohttp.ClientSession() as session:
-        async with session.get(f"{API_HOST}/api/v1/film") as ans:
+        async with session.get(f"http://{API_HOST}/api/v1/film") as ans:
             assert ans.status == 404
 
 
@@ -130,5 +133,5 @@ async def test_empty(empty_index):
 async def test_no_index():
     """Тест запускается без индекса и API должен вернуть ошибку 500"""
     async with aiohttp.ClientSession() as session:
-        async with session.get(f"{API_HOST}/api/v1/film") as ans:
+        async with session.get(f"http://{API_HOST}/api/v1/film") as ans:
             assert ans.status == 500

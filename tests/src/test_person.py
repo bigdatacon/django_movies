@@ -32,13 +32,7 @@ def some_person(request):
         }
     ]
     # Создаем поисковый индекс и заполняем документами
-    es = Elasticsearch(ELASTIC_HOST)
-    # FIXME: Индекс может уже существовать из-за хвостов прошлых ошибок
-    #        В рабочем варианте этого быть не должно, убрать потом
-    try:
-        es.indices.delete('persons')
-    except:
-        pass
+    es = Elasticsearch(f"http://{ELASTIC_HOST}")
     es.indices.create('persons', scheme)
     helpers.bulk(
         es,
@@ -70,7 +64,7 @@ def empty_index(request):
     with open("testdata/schemes.json") as fd:
         schemes = json.load(fd)
     scheme = schemes['person_scheme']
-    es = Elasticsearch(ELASTIC_HOST)
+    es = Elasticsearch(f"http://{ELASTIC_HOST}")
     # FIXME: Индекс может уже существовать из-за хвостов прошлых ошибок
     #        В рабочем варианте этого быть не должно, убрать потом
     try:
@@ -90,7 +84,7 @@ def empty_index(request):
 async def test_some_person(some_person):
     """Проверяем, что тестовый человек доступен по API"""
     async with aiohttp.ClientSession() as session:
-        async with session.get(f"{API_HOST}/api/v1/person/23d3d644-5abe-11ec-b50c-5378d698a87b") as ans:
+        async with session.get(f"http://{API_HOST}/api/v1/person/23d3d644-5abe-11ec-b50c-5378d698a87b") as ans:
             assert ans.status == 200
             data = await ans.json()
             assert data["uuid"] == "23d3d644-5abe-11ec-b50c-5378d698a87b"
@@ -101,7 +95,7 @@ async def test_some_person(some_person):
 async def test_person_list(some_person):
     """Проверяем, что тестовый человек отображается в списке всех людей"""
     async with aiohttp.ClientSession() as session:
-        async with session.get(f"{API_HOST}/api/v1/person") as ans:
+        async with session.get(f"http://{API_HOST}/api/v1/person") as ans:
             assert ans.status == 200
             data = await ans.json()
             assert isinstance(data, list)
@@ -114,7 +108,7 @@ async def test_person_list(some_person):
 async def test_empty_index(empty_index):
     """Тест запускается с пустым индексом и API должен вернуть ошибку 404"""
     async with aiohttp.ClientSession() as session:
-        async with session.get(f"{API_HOST}/api/v1/person") as ans:
+        async with session.get(f"http://{API_HOST}/api/v1/person") as ans:
             assert ans.status == 404
 
 
@@ -122,5 +116,5 @@ async def test_empty_index(empty_index):
 async def test_no_index():
     """Тест запускается без индекса и API должен вернуть ошибку 500"""
     async with aiohttp.ClientSession() as session:
-        async with session.get(f"{API_HOST}/api/v1/person") as ans:
+        async with session.get(f"http://{API_HOST}/api/v1/person") as ans:
             assert ans.status == 500
